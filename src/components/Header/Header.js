@@ -1,13 +1,44 @@
 import React from 'react';
 
-function Header({ theme, onToggleTheme }) {
+function Header({
+  theme,
+  onToggleTheme,
+  colorblindMode,
+  onToggleColorblindMode,
+}) {
   const isDark = theme === 'dark';
 
   return (
     <header>
       <div className="side" />
       <h1>Word Game</h1>
-      <div className="side">
+      <div className="side header-controls">
+        <button
+          className="theme-toggle-btn"
+          onClick={onToggleColorblindMode}
+          aria-pressed={colorblindMode}
+          aria-label={
+            colorblindMode
+              ? 'Turn off colorblind-friendly colors'
+              : 'Turn on colorblind-friendly colors'
+          }
+          title={
+            colorblindMode
+              ? 'Turn off colorblind-friendly colors'
+              : 'Turn on colorblind-friendly colors'
+          }
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path d="M12 5c-5.05 0-9.29 3.11-11 7.5 1.71 4.39 5.95 7.5 11 7.5s9.29-3.11 11-7.5C21.29 8.11 17.05 5 12 5Zm0 12.5a5 5 0 1 1 5-5 5 5 0 0 1-5 5Zm0-8a3 3 0 1 0 3 3 3 3 0 0 0-3-3Z" />
+          </svg>
+        </button>
         <button
           className="theme-toggle-btn"
           onClick={onToggleTheme}

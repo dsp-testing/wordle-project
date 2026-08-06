@@ -42,6 +42,26 @@ html[data-theme='dark'] {
 }
 
 /*
+  Colorblind-friendly palette.
+
+  Swaps the green/yellow success & warning colors for an orange/blue
+  palette (based on the Okabe-Ito colorblind-safe palette), which
+  remains distinguishable for the most common forms of color vision
+  deficiency (deuteranopia/protanopia). Toggled via `data-colorblind`
+  on <html> (see src/hooks/useColorblindMode.js). Declared after the
+  dark theme block so it takes precedence when both are active.
+*/
+html[data-colorblind='true'] {
+  --color-success: hsl(28deg 90% 48%);
+  --color-warning: hsl(207deg 79% 58%);
+}
+
+html[data-theme='dark'][data-colorblind='true'] {
+  --color-success: hsl(28deg 90% 58%);
+  --color-warning: hsl(207deg 90% 68%);
+}
+
+/*
   Custom styles
 */
 body {
@@ -84,6 +104,14 @@ header .side {
   width: var(--header-height);
   display: grid;
   place-content: center;
+}
+
+header .side.header-controls {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
 }
 
 .theme-toggle-btn {
