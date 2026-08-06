@@ -1,5 +1,8 @@
 /*
   Theme and global variables
+
+  Palette inspired by Monet's "Water Lilies" (navy, steel blue,
+  olive green, sage green, dusty rose).
 */
 html {
   overflow-y: scroll;
@@ -7,14 +10,66 @@ html {
   --game-spacing: 32px;
   --header-height: 4rem;
 
-  --color-success: hsl(150deg 70% 30%);
-  --color-warning: hsl(50deg 100% 30%);
-  --color-error: hsl(0deg 70% 45%);
-  --color-gray-100: hsl(0deg 0% 10%);
-  --color-gray-300: hsl(0deg 0% 25%);
-  --color-gray-500: hsl(0deg 0% 50%);
-  --color-gray-700: hsl(0deg 0% 75%);
-  --color-gray-900: hsl(0deg 0% 90%);
+  /* Monet "Water Lilies" palette */
+  --palette-navy: hsl(203deg 60% 26%);
+  --palette-steel-blue: hsl(215deg 42% 61%);
+  --palette-olive: hsl(97deg 42% 38%);
+  --palette-sage: hsl(118deg 28% 57%);
+  --palette-rose: hsl(333deg 42% 68%);
+
+  --color-success: var(--palette-olive);
+  --color-warning: var(--palette-rose);
+  --color-error: hsl(350deg 55% 42%);
+  --color-gray-100: var(--palette-navy);
+  --color-gray-300: hsl(205deg 45% 33%);
+  --color-gray-500: var(--palette-steel-blue);
+  --color-gray-700: hsl(215deg 45% 78%);
+  --color-gray-900: hsl(215deg 45% 93%);
+
+  --color-background: hsl(210deg 35% 98%);
+  --color-text: var(--color-gray-100);
+}
+
+/*
+  Dark theme overrides.
+
+  The theme is toggled by setting `data-theme="dark"` on the <html>
+  element (see src/hooks/useTheme.js). Colors are chosen to keep the
+  same relative contrast as the light theme, using deep navy for the
+  background and brighter tints of the palette for accents/text.
+*/
+html[data-theme='dark'] {
+  --color-success: hsl(97deg 45% 52%);
+  --color-warning: hsl(333deg 55% 75%);
+  --color-error: hsl(350deg 70% 62%);
+  --color-gray-100: hsl(215deg 45% 93%);
+  --color-gray-300: var(--palette-steel-blue);
+  --color-gray-500: hsl(215deg 30% 55%);
+  --color-gray-700: hsl(205deg 35% 28%);
+  --color-gray-900: hsl(205deg 35% 16%);
+
+  --color-background: hsl(205deg 45% 11%);
+  --color-text: var(--color-gray-100);
+}
+
+/*
+  Colorblind-friendly palette.
+
+  Swaps the green/yellow success & warning colors for an orange/blue
+  palette (based on the Okabe-Ito colorblind-safe palette), which
+  remains distinguishable for the most common forms of color vision
+  deficiency (deuteranopia/protanopia). Toggled via `data-colorblind`
+  on <html> (see src/hooks/useColorblindMode.js). Declared after the
+  dark theme block so it takes precedence when both are active.
+*/
+html[data-colorblind='true'] {
+  --color-success: hsl(28deg 90% 48%);
+  --color-warning: hsl(207deg 79% 58%);
+}
+
+html[data-theme='dark'][data-colorblind='true'] {
+  --color-success: hsl(28deg 90% 58%);
+  --color-warning: hsl(207deg 90% 68%);
 }
 
 /*
@@ -22,6 +77,9 @@ html {
 */
 body {
   font-family: sans-serif;
+  background: var(--color-background);
+  color: var(--color-text);
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 @media (max-height: 600px) {
@@ -57,6 +115,32 @@ header .side {
   width: var(--header-height);
   display: grid;
   place-content: center;
+}
+
+header .side.header-controls {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.theme-toggle-btn {
+  display: grid;
+  place-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  color: inherit;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--color-gray-900);
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.92);
 }
 
 h1 {
@@ -155,6 +239,8 @@ h1 {
   display: block;
   width: 100%;
   font-size: 2rem;
+  background: var(--color-background);
+  color: var(--color-text);
   border: 2px solid var(--color-gray-300);
   border-radius: 4px;
   padding: 8px 16px;
