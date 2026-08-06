@@ -15,6 +15,30 @@ html {
   --color-gray-500: hsl(0deg 0% 50%);
   --color-gray-700: hsl(0deg 0% 75%);
   --color-gray-900: hsl(0deg 0% 90%);
+
+  --color-background: hsl(0deg 0% 100%);
+  --color-text: var(--color-gray-100);
+}
+
+/*
+  Dark theme overrides.
+
+  The theme is toggled by setting `data-theme="dark"` on the <html>
+  element (see src/hooks/useTheme.js). Colors are chosen to keep the
+  same relative contrast as the light theme.
+*/
+html[data-theme='dark'] {
+  --color-success: hsl(150deg 60% 45%);
+  --color-warning: hsl(50deg 90% 50%);
+  --color-error: hsl(0deg 80% 60%);
+  --color-gray-100: hsl(0deg 0% 95%);
+  --color-gray-300: hsl(0deg 0% 75%);
+  --color-gray-500: hsl(0deg 0% 50%);
+  --color-gray-700: hsl(0deg 0% 30%);
+  --color-gray-900: hsl(0deg 0% 15%);
+
+  --color-background: hsl(220deg 15% 12%);
+  --color-text: var(--color-gray-100);
 }
 
 /*
@@ -22,6 +46,9 @@ html {
 */
 body {
   font-family: sans-serif;
+  background: var(--color-background);
+  color: var(--color-text);
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 @media (max-height: 600px) {
@@ -57,6 +84,24 @@ header .side {
   width: var(--header-height);
   display: grid;
   place-content: center;
+}
+
+.theme-toggle-btn {
+  display: grid;
+  place-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  color: inherit;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--color-gray-900);
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.92);
 }
 
 h1 {
@@ -155,6 +200,8 @@ h1 {
   display: block;
   width: 100%;
   font-size: 2rem;
+  background: var(--color-background);
+  color: var(--color-text);
   border: 2px solid var(--color-gray-300);
   border-radius: 4px;
   padding: 8px 16px;
