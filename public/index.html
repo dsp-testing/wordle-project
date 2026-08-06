@@ -8,8 +8,25 @@
       content="width=device-width, initial-scale=1"
     />
     <title>Word Game</title>
+    <meta name="color-scheme" content="light dark" />
     <link rel="stylesheet" href="../src/reset.css" />
     <link rel="stylesheet" href="../src/styles.css" />
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem('theme');
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          /* localStorage unavailable; fall back to CSS media query */
+        }
+      })();
+    </script>
     <script type="module" src="../src/index.js"></script>
   </head>
   <body>

@@ -15,6 +15,46 @@ html {
   --color-gray-500: hsl(0deg 0% 50%);
   --color-gray-700: hsl(0deg 0% 75%);
   --color-gray-900: hsl(0deg 0% 90%);
+
+  --color-background: hsl(0deg 0% 100%);
+  --color-text: hsl(0deg 0% 10%);
+  --color-cell-text: hsl(0deg 0% 100%);
+}
+
+/*
+  Dark mode
+  Applied automatically when the OS preference is dark, unless the user has
+  explicitly chosen a theme via the toggle (data-theme attribute takes
+  priority over the media query).
+*/
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) {
+    --color-success: hsl(150deg 60% 40%);
+    --color-warning: hsl(50deg 90% 45%);
+    --color-error: hsl(0deg 65% 55%);
+    --color-gray-100: hsl(0deg 0% 90%);
+    --color-gray-300: hsl(0deg 0% 70%);
+    --color-gray-500: hsl(0deg 0% 50%);
+    --color-gray-700: hsl(0deg 0% 30%);
+    --color-gray-900: hsl(220deg 15% 18%);
+
+    --color-background: hsl(220deg 20% 10%);
+    --color-text: hsl(0deg 0% 95%);
+  }
+}
+
+html[data-theme='dark'] {
+  --color-success: hsl(150deg 60% 40%);
+  --color-warning: hsl(50deg 90% 45%);
+  --color-error: hsl(0deg 65% 55%);
+  --color-gray-100: hsl(0deg 0% 90%);
+  --color-gray-300: hsl(0deg 0% 70%);
+  --color-gray-500: hsl(0deg 0% 50%);
+  --color-gray-700: hsl(0deg 0% 30%);
+  --color-gray-900: hsl(220deg 15% 18%);
+
+  --color-background: hsl(220deg 20% 10%);
+  --color-text: hsl(0deg 0% 95%);
 }
 
 /*
@@ -22,6 +62,9 @@ html {
 */
 body {
   font-family: sans-serif;
+  background: var(--color-background);
+  color: var(--color-text);
+  transition: background 150ms ease, color 150ms ease;
 }
 
 @media (max-height: 600px) {
@@ -48,6 +91,7 @@ button {
 
 header {
   display: flex;
+  align-items: center;
   height: var(--header-height);
   border-bottom: 1px solid var(--color-gray-700);
   color: var(--color-gray-300);
@@ -127,17 +171,17 @@ h1 {
 .cell.correct {
   background: var(--color-success);
   border-color: var(--color-success);
-  color: white;
+  color: var(--color-cell-text);
 }
 .cell.incorrect {
   background: var(--color-gray-300);
   border-color: var(--color-gray-300);
-  color: white;
+  color: var(--color-cell-text);
 }
 .cell.misplaced {
   background: var(--color-warning);
   border-color: var(--color-warning);
-  color: white;
+  color: var(--color-cell-text);
 }
 
 .guess-input-wrapper {
@@ -159,6 +203,23 @@ h1 {
   border-radius: 4px;
   padding: 8px 16px;
   outline-offset: 4px;
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+.theme-toggle {
+  display: grid;
+  place-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  background: var(--color-gray-900);
 }
 
 .banner {
