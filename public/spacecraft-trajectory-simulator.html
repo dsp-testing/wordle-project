@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trajectory :: Interactive Spacecraft Simulator</title>
+<style>
+  :root{
+    --accent:#4ee1ff;
+    --accent2:#ff5f6d;
+    --panel-bg: rgba(8,14,24,0.72);
+    --panel-border: rgba(78,225,255,0.25);
+    --text-dim: #7fa3b8;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:#000;
+    overflow:hidden;
+    font-family: 'Segoe UI', 'Consolas', monospace, sans-serif;
+    color:#dff6ff;
+    user-select:none;
+  }
+  #scene{ position:fixed; inset:0; display:block; cursor: crosshair; }
+
+  /* ---------- Cinematic vignette + scanline overlay ---------- */
+  #vignette{
+    position:fixed; inset:0; pointer-events:none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+    z-index:5;
+  }
+  #scanlines{
+    position:fixed; inset:0; pointer-events:none; z-index:6; opacity:0.05;
+    background: repeating-linear-gradient(0deg, #fff 0px, #fff 1px, transparent 1px, transparent 3px);
+    mix-blend-mode: overlay;
+  }
+  #flash{
+    position:fixed; inset:0; pointer-events:none; z-index:50;
+    background:#fff; opacity:0; transition: opacity 0.08s ease-out;
+  }
+
+  /* ---------- Intro title card ---------- */
+  #intro{
+    position:fixed; inset:0; z-index:100;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at 50% 30%, #0a1a2c 0%, #000308 70%);
+    transition: opacity 1.2s ease, visibility 1.2s ease;
+  }
+  #intro.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+  #intro h1{
+    font-size: clamp(28px, 6vw, 64px);
+    letter-spacing: 10px;
+    margin:0;
+    font-weight:200;
+    background: linear-gradient(90deg,#4ee1ff,#a9fff0,#4ee1ff);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-shadow: 0 0 40px rgba(78,225,255,0.35);
+    animation: shimmer 4s linear infinite;
+  }
+  @keyframes shimmer{
+    0%{ background-position: 0% 50%; }
+    100%{ background-position: 200% 50%; }
+  }
+  #intro h1{ background-size: 200% auto; }
+  #intro p{ color:#7fa3b8; letter-spacing:4px; margin-top:14px; font-size:13px; text-transform:uppercase;}
+  #startBtn{
+    margin-top:46px;
+    padding:16px 46px;
+    font-size:15px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    background:transparent;
+    border:1px solid var(--accent);
+    color:var(--accent);
+    cursor:pointer;
+    border-radius:2px;
+    transition: all 0.25s ease;
+    font-family:inherit;
+  }
+  #startBtn:hover{
+    background: var(--accent);
+    color:#001018;
+    box-shadow: 0 0 30px rgba(78,225,255,0.6);
+  }
+  #missionPicker{
+    margin-top:34px;
+    display:flex; gap:14px; flex-wrap:wrap; justify-content:center; max-width:640px;
+  }
+  .mission-card{
+    padding:12px 18px; border:1px solid rgba(78,225,255,0.25); border-radius:4px;
+    cursor:pointer; font-size:12px; letter-spacing:1px; color:#9fd6ea;
+    background:rgba(78,225,255,0.04); transition: all .2s ease; text-align:left;
+    min-width:170px;
+  }
+  .mission-card b{ display:block; color:#e8fbff; font-size:13px; margin-bottom:4px; letter-spacing:1px;}
+  .mission-card:hover, .mission-card.active{
+    background:rgba(78,225,255,0.15); border-color:var(--accent);
+    box-shadow:0 0 20px rgba(78,225,255,0.25);
+  }
+
+  /* ---------- HUD ---------- */
+  .panel{
+    position:fixed; z-index:10;
+    background: var(--panel-bg);
+    border:1px solid var(--panel-border);
+    border-radius:6px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+  }
+  #topbar{
+    top:16px; left:16px; right:16px;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 18px;
+  }
+  #missionTitle{ font-size:13px; letter-spacing:3px; color:var(--accent); text-transform:uppercase; }
+  #missionSub{ font-size:11px; color:var(--text-dim); letter-spacing:1px; margin-top:2px;}
+  #clock{ font-size:22px; letter-spacing:2px; color:#eafcff; font-variant-numeric: tabular-nums; }
+  #clock span{ font-size:11px; color:var(--text-dim); display:block; letter-spacing:2px; }
+
+  #telemetry{
+    bottom:16px; left:16px; padding:14px 20px; width:280px;
+  }
+  .tele-row{ display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px dashed rgba(255,255,255,0.06); letter-spacing:1px;}
+  .tele-row:last-child{ border-bottom:none; }
+  .tele-label{ color:var(--text-dim); }
+  .tele-val{ color:#e8fbff; font-variant-numeric: tabular-nums; }
+  .bar-track{ height:6px; border-radius:3px; background:rgba(255,255,255,0.08); overflow:hidden; margin-top:4px;}
+  .bar-fill{ height:100%; background:linear-gradient(90deg,var(--accent),#a9fff0); transition: width .15s ease; }
+  .bar-fill.fuel{ background:linear-gradient(90deg,#ffb84e,#ff5f6d); }
+  .bar-fill.throttle{ background:linear-gradient(90deg,#7CFF9B,#4ee1ff);}
+
+  #controls{
+    bottom:16px; right:16px; padding:14px 18px; width:250px;
+  }
+  #controls h3{ margin:0 0 8px; font-size:11px; letter-spacing:3px; color:var(--text-dim); text-transform:uppercase; font-weight:400;}
+  .ctl-row{ display:flex; justify-content:space-between; font-size:11.5px; padding:3px 0; color:#bfe9f5;}
+  .key{ background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:3px; padding:1px 7px; font-family:monospace; color:#eafcff;}
+
+  #timewarp{
+    top:16px; left:50%; transform:translateX(-50%);
+    padding:8px 16px; display:flex; gap:6px; align-items:center;
+  }
+  .tw-btn{
+    background:transparent; border:1px solid rgba(78,225,255,0.3); color:#9fd6ea;
+    padding:5px 10px; font-size:11px; border-radius:3px; cursor:pointer; font-family:inherit;
+    transition: all .15s ease;
+  }
+  .tw-btn.active{ background:var(--accent); color:#001018; box-shadow:0 0 12px rgba(78,225,255,0.6); font-weight:bold;}
+  .tw-btn:hover{ border-color:var(--accent); }
+
+  #actionbar{
+    bottom:16px; left:50%; transform:translateX(-50%);
+    display:flex; gap:10px; padding:10px 14px;
+  }
+  .act-btn{
+    background:rgba(78,225,255,0.06); border:1px solid rgba(78,225,255,0.3); color:#dff6ff;
+    padding:10px 18px; font-size:12px; letter-spacing:2px; text-transform:uppercase; border-radius:4px;
+    cursor:pointer; font-family:inherit; transition: all .2s ease;
+  }
+  .act-btn:hover{ background:rgba(78,225,255,0.2); box-shadow:0 0 16px rgba(78,225,255,0.4); }
+  .act-btn.danger{ border-color: rgba(255,95,109,0.5); color:#ffb3ba;}
+  .act-btn.danger:hover{ background:rgba(255,95,109,0.18); box-shadow:0 0 16px rgba(255,95,109,0.4); }
+
+  #camInfo{
+    top:70px; right:16px; padding:8px 14px; font-size:11px; color:var(--text-dim); letter-spacing:1px;
+  }
+  #camInfo b{ color:#9fd6ea; }
+
+  #eventLog{
+    top:70px; left:16px; width:300px; max-height:150px; overflow:hidden; padding:10px 14px;
+  }
+  #eventLog h3{ margin:0 0 6px; font-size:10px; letter-spacing:3px; color:var(--text-dim); text-transform:uppercase; font-weight:400;}
+  .log-line{ font-size:11px; color:#bfe9f5; padding:2px 0; opacity:0.9; animation: fadein 0.4s ease;}
+  .log-line .t{ color:var(--text-dim); margin-right:6px; }
+  @keyframes fadein{ from{ opacity:0; transform:translateY(-4px);} to{opacity:0.9; transform:translateY(0);} }
+
+  #crashOverlay, #successOverlay{
+    position:fixed; inset:0; z-index:60; display:none;
+    align-items:center; justify-content:center; flex-direction:column;
+    background:rgba(0,0,0,0.55);
+  }
+  #crashOverlay h2{ color:#ff5f6d; font-size:42px; letter-spacing:8px; text-shadow:0 0 40px rgba(255,95,109,0.6); margin:0;}
+  #successOverlay h2{ color:#7CFF9B; font-size:42px; letter-spacing:8px; text-shadow:0 0 40px rgba(124,255,155,0.6); margin:0;}
+  #crashOverlay p, #successOverlay p{ color:#cfeaf2; letter-spacing:2px; margin-top:14px;}
+
+  .fine-print{ position:fixed; bottom:6px; right:16px; font-size:10px; color:rgba(255,255,255,0.25); z-index:10; letter-spacing:1px;}
+
+  @media (max-width: 800px){
+    #controls, #eventLog{ display:none; }
+    #telemetry{ width: 220px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+<div id="vignette"></div>
+<div id="scanlines"></div>
+<div id="flash"></div>
+
+<!-- ============ INTRO ============ -->
+<div id="intro">
+  <h1>TRAJECTORY</h1>
+  <p>Interactive Spacecraft Flight Simulator</p>
+  <div id="missionPicker">
+    <div class="mission-card active" data-mission="orbit">
+      <b>Orbital Insertion</b>
+      Start in low orbit around Terra. Circularize, raise apoapsis, and survive.
+    </div>
+    <div class="mission-card" data-mission="transfer">
+      <b>Lunar Transfer</b>
+      Depart Terra orbit and thread a Hohmann transfer to the Moon.
+    </div>
+    <div class="mission-card" data-mission="escape">
+      <b>Deep Space Escape</b>
+      Break free of Terra's gravity well and slingshot past the Moon into the void.
+    </div>
+    <div class="mission-card" data-mission="freeflight">
+      <b>Free Flight</b>
+      No objectives. Full system, full thrust, full sandbox.
+    </div>
+  </div>
+  <button id="startBtn">Ignite Engines</button>
+</div>
+
+<!-- ============ HUD ============ -->
+<div id="topbar" class="panel">
+  <div>
+    <div id="missionTitle">Orbital Insertion</div>
+    <div id="missionSub">Circularize orbit around Terra</div>
+  </div>
+  <div id="clock"><span>MISSION ELAPSED TIME</span><span id="metVal">T+ 00:00:00</span></div>
+  <div style="text-align:right;">
+    <div id="missionTitle" style="color:#7fa3b8;">STATUS</div>
+    <div id="missionSub" style="color:#e8fbff;" id="statusVal">Nominal</div>
+  </div>
+</div>
+
+<div id="timewarp" class="panel">
+  <span style="font-size:11px; color:var(--text-dim); letter-spacing:2px; margin-right:4px;">WARP</span>
+  <button class="tw-btn" data-w="0">II</button>
+  <button class="tw-btn active" data-w="1">1x</button>
+  <button class="tw-btn" data-w="5">5x</button>
+  <button class="tw-btn" data-w="20">20x</button>
+  <button class="tw-btn" data-w="100">100x</button>
+</div>
+
+<div id="eventLog" class="panel">
+  <h3>Flight Log</h3>
+  <div id="logLines"></div>
+</div>
+
+<div id="camInfo" class="panel">
+  Camera: <b id="camMode">Chase</b> &nbsp;|&nbsp; Zoom: <b id="zoomVal">1.0x</b><br>
+  <span style="opacity:0.7">Scroll to zoom &middot; [C] cycle camera</span>
+</div>
+
+<div id="telemetry" class="panel">
+  <div class="tele-row"><span class="tele-label">ALTITUDE</span><span class="tele-val" id="alt">0 km</span></div>
+  <div class="tele-row"><span class="tele-label">VELOCITY</span><span class="tele-val" id="vel">0 m/s</span></div>
+  <div class="tele-row"><span class="tele-label">APOAPSIS</span><span class="tele-val" id="apo">--</span></div>
+  <div class="tele-row"><span class="tele-label">PERIAPSIS</span><span class="tele-val" id="peri">--</span></div>
+  <div class="tele-row"><span class="tele-label">HEADING</span><span class="tele-val" id="heading">0&deg;</span></div>
+  <div class="tele-row">
+    <span class="tele-label">THROTTLE</span><span class="tele-val" id="throttleVal">0%</span>
+  </div>
+  <div class="bar-track"><div class="bar-fill throttle" id="throttleBar" style="width:0%"></div></div>
+  <div class="tele-row" style="margin-top:6px;">
+    <span class="tele-label">FUEL</span><span class="tele-val" id="fuelVal">100%</span>
+  </div>
+  <div class="bar-track"><div class="bar-fill fuel" id="fuelBar" style="width:100%"></div></div>
+</div>
+
+<div id="controls" class="panel">
+  <h3>Flight Controls</h3>
+  <div class="ctl-row"><span>Thrust forward</span><span class="key">W / &uarr;</span></div>
+  <div class="ctl-row"><span>Retro thrust</span><span class="key">S / &darr;</span></div>
+  <div class="ctl-row"><span>Rotate</span><span class="key">A D / &larr; &rarr;</span></div>
+  <div class="ctl-row"><span>Full throttle</span><span class="key">Shift</span></div>
+  <div class="ctl-row"><span>Cut throttle</span><span class="key">X</span></div>
+  <div class="ctl-row"><span>Time warp +/-</span><span class="key">. / ,</span></div>
+  <div class="ctl-row"><span>Cycle camera</span><span class="key">C</span></div>
+  <div class="ctl-row"><span>Pause</span><span class="key">Space</span></div>
+</div>
+
+<div id="actionbar" class="panel">
+  <button class="act-btn" id="btnPause">Pause</button>
+  <button class="act-btn" id="btnCam">Camera</button>
+  <button class="act-btn danger" id="btnReset">Reset Mission</button>
+</div>
+
+<div class="fine-print">Simplified n-body gravity model &middot; not to scale</div>
+
+<div id="crashOverlay">
+  <h2>MISSION FAILURE</h2>
+  <p id="crashReason">Spacecraft lost.</p>
+  <button class="act-btn" style="margin-top:24px;" onclick="location.reload()">Restart</button>
+</div>
+<div id="successOverlay">
+  <h2>OBJECTIVE COMPLETE</h2>
+  <p id="successReason">Well flown, commander.</p>
+  <button class="act-btn" style="margin-top:24px;" onclick="location.reload()">Fly Again</button>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =====================================================================
+   TRAJECTORY — a standalone cinematic spacecraft trajectory simulator.
+   Simplified 2D gravitational n-body sim with a lightweight rocket
+   equation for fuel, plus a cinematic rendering layer (starfield,
+   glow trails, particles, camera easing).
+   ===================================================================== */
+
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+function resize(){
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---------------------------------------------------------------------
+   Physics constants (arbitrary game units, tuned for cinematic feel)
+--------------------------------------------------------------------- */
+const G = 1200;              // gravitational constant (scaled)
+const KM_PER_UNIT = 40;      // for readable telemetry
+const M_PER_UNIT = KM_PER_UNIT * 1000;
+
+// Celestial bodies: Sol (background star, mostly visual anchor), Terra, Luna
+const bodies = [
+  {
+    name:'Sol', mass: 0, radius: 60, x: -3200, y: -1800, vx:0, vy:0,
+    color:['#fff6d0','#ffdd7a','#ff8a2a'], glow:'rgba(255,200,100,0.9)', isStar:true, orbits:null
+  },
+  {
+    name:'Terra', mass: 5200, radius: 90, x: 0, y: 0, vx:0, vy:0,
+    color:['#4ee1ff','#2a7fd6','#123a66'], glow:'rgba(78,180,255,0.55)', orbits:null,
+    land:true
+  },
+  {
+    name:'Luna', mass: 90, radius: 26, x: 1650, y: 0, vx:0, vy: -145, orbits:'Terra',
+    color:['#e8e4da','#b7b2a6','#6b6760'], glow:'rgba(220,220,210,0.35)'
+  }
+];
+const terra = bodies.find(b=>b.name==='Terra');
+const luna = bodies.find(b=>b.name==='Luna');
+
+// initialize Luna's velocity for a clean circular-ish orbit around Terra
+(function(){
+  const dx = luna.x - terra.x, dy = luna.y - terra.y;
+  const r = Math.hypot(dx,dy);
+  const speed = Math.sqrt(G * terra.mass / r);
+  const angle = Math.atan2(dy,dx) + Math.PI/2;
+  luna.vx = terra.vx + Math.cos(angle)*speed;
+  luna.vy = terra.vy + Math.sin(angle)*speed;
+})();
+
+/* ---------------------------------------------------------------------
+   Spacecraft state
+--------------------------------------------------------------------- */
+const craft = {
+  x:0, y:0, vx:0, vy:0, angle:0,          // angle: radians, 0 = pointing +x
+  throttle:0, fuel:100, maxFuel:100,
+  thrustAccel: 55,      // accel units/s^2 at full throttle
+  fuelBurnRate: 6,      // % per second at full throttle
+  alive:true, landed:false,
+  trail: [],
+  destroyed:false
+};
+
+let missionType = 'orbit';
+let paused = false;
+let timeWarp = 1;
+let met = 0; // mission elapsed time (seconds, sim time)
+let camMode = 'chase'; // 'chase' | 'system' | 'free'
+let camZoom = 1;
+let camTargetZoom = 1;
+let camX = 0, camY = 0; // camera center in world space (smoothed)
+let missionComplete = false;
+let missionFailed = false;
+let missionStarted = false;
+
+const keys = {};
+let thrustKeyHeld = false, retroKeyHeld = false, turnL=false, turnR=false;
+
+/* ---------------------------------------------------------------------
+   Mission setup
+--------------------------------------------------------------------- */
+const missions = {
+  orbit: {
+    title:'Orbital Insertion',
+    sub:'Circularize your orbit around Terra without crashing or running dry',
+    setup(){
+      const r = terra.radius + 260;
+      craft.x = terra.x + r; craft.y = terra.y;
+      const speed = Math.sqrt(G*terra.mass/r) * 0.82; // slightly under circular -> elliptical start
+      craft.vx = terra.vx; craft.vy = terra.vy - speed;
+      craft.angle = -Math.PI/2;
+    },
+    check(){
+      const {ap, pe} = orbitalElements(craft, terra);
+      if(ap && pe && ap>0 && pe > terra.radius+40 && Math.abs(ap-pe) < 120){
+        return {done:true, msg:'Stable circular orbit achieved. Orbit locked at ' + Math.round(pe*KM_PER_UNIT/10)*10 + ' km.'};
+      }
+      return null;
+    }
+  },
+  transfer: {
+    title:'Lunar Transfer',
+    sub:'Depart Terra orbit and reach Luna\u2019s sphere of influence',
+    setup(){
+      const r = terra.radius + 220;
+      craft.x = terra.x + r; craft.y = terra.y;
+      const speed = Math.sqrt(G*terra.mass/r);
+      craft.vx = terra.vx; craft.vy = terra.vy - speed;
+      craft.angle = -Math.PI/2;
+    },
+    check(){
+      const d = Math.hypot(craft.x-luna.x, craft.y-luna.y);
+      if(d < luna.radius + 160){
+        return {done:true, msg:'Arrived in lunar space. Transfer successful.'};
+      }
+      return null;
+    }
+  },
+  escape: {
+    title:'Deep Space Escape',
+    sub:'Achieve escape velocity from Terra and pass beyond Luna\u2019s orbit',
+    setup(){
+      const r = terra.radius + 200;
+      craft.x = terra.x + r; craft.y = terra.y;
+      const speed = Math.sqrt(G*terra.mass/r) * 0.9;
+      craft.vx = terra.vx; craft.vy = terra.vy - speed;
+      craft.angle = -Math.PI/2;
+    },
+    check(){
+      const d = Math.hypot(craft.x-terra.x, craft.y-terra.y);
+      if(d > 2600){
+        return {done:true, msg:'Escaped Terra\u2019s gravity well. You are free among the stars.'};
+      }
+      return null;
+    }
+  },
+  freeflight: {
+    title:'Free Flight',
+    sub:'No objectives \u2014 explore the system freely',
+    setup(){
+      const r = terra.radius + 260;
+      craft.x = terra.x + r; craft.y = terra.y;
+      const speed = Math.sqrt(G*terra.mass/r);
+      craft.vx = terra.vx; craft.vy = terra.vy - speed;
+      craft.angle = -Math.PI/2;
+    },
+    check(){ return null; }
+  }
+};
+
+function orbitalElements(obj, parent){
+  const dx = obj.x - parent.x, dy = obj.y - parent.y;
+  const r = Math.hypot(dx,dy);
+  const dvx = obj.vx - parent.vx, dvy = obj.vy - parent.vy;
+  const v2 = dvx*dvx + dvy*dvy;
+  const mu = G * parent.mass;
+  if(mu <= 0) return {ap:null, pe:null, ecc:null};
+  const energy = v2/2 - mu/r;
+  const a = -mu/(2*energy); // semi-major axis
+  // specific angular momentum
+  const h = dx*dvy - dy*dvx;
+  const eccSq = 1 + (2*energy*h*h)/(mu*mu);
+  const ecc = Math.sqrt(Math.max(0,eccSq));
+  if(a <= 0 || !isFinite(a)){
+    return {ap:null, pe: r, ecc, hyperbolic:true};
+  }
+  const ap = a*(1+ecc);
+  const pe = a*(1-ecc);
+  return {ap, pe, ecc, a};
+}
+
+/* ---------------------------------------------------------------------
+   Starfield (parallax layers) + nebula haze for cinematic backdrop
+--------------------------------------------------------------------- */
+let stars = [];
+function initStars(){
+  stars = [];
+  const layers = [
+    {n: 220, speed:0.05, size:[0.4,1.1], alpha:[0.25,0.6]},
+    {n: 140, speed:0.15, size:[0.8,1.8], alpha:[0.4,0.85]},
+    {n: 60,  speed:0.35, size:[1.2,2.6], alpha:[0.6,1.0]}
+  ];
+  const span = 6000;
+  layers.forEach((layer, li)=>{
+    for(let i=0;i<layer.n;i++){
+      stars.push({
+        x:(Math.random()-0.5)*span*3, y:(Math.random()-0.5)*span*3,
+        layer:li, speed:layer.speed,
+        size: layer.size[0] + Math.random()*(layer.size[1]-layer.size[0]),
+        alpha: layer.alpha[0] + Math.random()*(layer.alpha[1]-layer.alpha[0]),
+        twinkle: Math.random()*Math.PI*2
+      });
+    }
+  });
+}
+initStars();
+
+/* ---------------------------------------------------------------------
+   Particles for thruster exhaust + explosion
+--------------------------------------------------------------------- */
+let particles = [];
+function spawnThrustParticles(dt, retro){
+  const back = craft.angle + Math.PI + (retro? Math.PI : 0);
+  for(let i=0;i<3;i++){
+    const spread = (Math.random()-0.5)*0.5;
+    const a = back + spread;
+    const speed = 60 + Math.random()*60;
+    particles.push({
+      x: craft.x - Math.cos(craft.angle)*14, y: craft.y - Math.sin(craft.angle)*14,
+      vx: craft.vx + Math.cos(a)*speed, vy: craft.vy + Math.sin(a)*speed,
+      life: 0.5 + Math.random()*0.4, age:0,
+      size: 2 + Math.random()*2.5,
+      color: Math.random()<0.5 ? '#9fd6ff' : '#ffdca0'
+    });
+  }
+}
+function spawnExplosion(x,y){
+  for(let i=0;i<90;i++){
+    const a = Math.random()*Math.PI*2;
+    const speed = 40 + Math.random()*220;
+    particles.push({
+      x, y, vx:Math.cos(a)*speed, vy:Math.sin(a)*speed,
+      life: 0.6 + Math.random()*0.9, age:0,
+      size: 1.5 + Math.random()*3.5,
+      color: Math.random()<0.5 ? '#ff5f6d' : '#ffb84e'
+    });
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Event log
+--------------------------------------------------------------------- */
+const logLinesEl = document.getElementById('logLines');
+function logEvent(msg){
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  const t = formatMET(met);
+  div.innerHTML = '<span class="t">'+t+'</span>' + msg;
+  logLinesEl.insertBefore(div, logLinesEl.firstChild);
+  while(logLinesEl.children.length > 6) logLinesEl.removeChild(logLinesEl.lastChild);
+}
+
+function formatMET(s){
+  s = Math.max(0, Math.floor(s));
+  const hh = String(Math.floor(s/3600)).padStart(2,'0');
+  const mm = String(Math.floor((s%3600)/60)).padStart(2,'0');
+  const ss = String(Math.floor(s%60)).padStart(2,'0');
+  return 'T+ '+hh+':'+mm+':'+ss;
+}
+
+/* ---------------------------------------------------------------------
+   Simulation step
+--------------------------------------------------------------------- */
+const FIXED_DT = 1/60;
+
+function gravityAt(px, py){
+  let ax=0, ay=0;
+  for(const b of bodies){
+    const dx = b.x - px, dy = b.y - py;
+    const rr = dx*dx + dy*dy;
+    const r = Math.sqrt(rr) || 1;
+    if(b.mass<=0) continue;
+    const soft = Math.max(rr, (b.radius*0.6)*(b.radius*0.6));
+    const a = G * b.mass / soft;
+    ax += a * dx/r; ay += a * dy/r;
+  }
+  return [ax,ay];
+}
+
+function stepPhysics(dt){
+  // move moon(s) around their parent for a living solar system
+  for(const b of bodies){
+    if(b.orbits){
+      const parent = bodies.find(p=>p.name===b.orbits);
+      const [ax,ay] = gravityFromSingle(parent, b.x, b.y);
+      b.vx += ax*dt; b.vy += ay*dt;
+      b.x += b.vx*dt; b.y += b.vy*dt;
+    }
+  }
+
+  if(!missionStarted || !craft.alive || craft.landed || missionComplete || missionFailed) return;
+
+  // thrust
+  let ax=0, ay=0;
+  if(craft.throttle > 0 && craft.fuel > 0){
+    const a = craft.thrustAccel * craft.throttle;
+    ax += Math.cos(craft.angle)*a;
+    ay += Math.sin(craft.angle)*a;
+    craft.fuel = Math.max(0, craft.fuel - craft.fuelBurnRate*craft.throttle*dt);
+    spawnThrustParticles(dt, false);
+  }
+
+  const [gx,gy] = gravityAt(craft.x, craft.y);
+  ax += gx; ay += gy;
+
+  craft.vx += ax*dt; craft.vy += ay*dt;
+  craft.x += craft.vx*dt; craft.y += craft.vy*dt;
+
+  // trail
+  craft.trail.push({x:craft.x, y:craft.y});
+  if(craft.trail.length > 900) craft.trail.shift();
+
+  // collision check
+  for(const b of bodies){
+    if(b.mass<=0) continue;
+    const d = Math.hypot(craft.x-b.x, craft.y-b.y);
+    if(d < b.radius){
+      const speed = Math.hypot(craft.vx-b.vx, craft.vy-b.vy);
+      if(speed < 18){
+        craft.landed = true; craft.alive = true;
+        craft.vx = b.vx; craft.vy = b.vy;
+        logEvent('Touchdown on '+b.name+'. Soft landing confirmed.');
+        triggerSuccess('Soft landing on '+b.name+'. Mission accomplished.');
+      } else {
+        craft.alive = false; craft.destroyed = true;
+        spawnExplosion(craft.x, craft.y);
+        flashScreen();
+        logEvent('Impact with '+b.name+' at '+Math.round(speed*M_PER_UNIT/1000)+' m/s. Spacecraft lost.');
+        triggerFailure('Impacted '+b.name+' at high velocity.');
+      }
+    }
+  }
+
+  // out of bounds -> lost in space
+  if(Math.hypot(craft.x,craft.y) > 30000){
+    craft.alive = false;
+    logEvent('Contact lost. Spacecraft drifted beyond tracking range.');
+    triggerFailure('Spacecraft drifted out of range.');
+  }
+
+  // mission objective check
+  if(!missionComplete && !missionFailed){
+    const res = missions[missionType].check();
+    if(res && res.done){
+      triggerSuccess(res.msg);
+    }
+  }
+}
+
+function gravityFromSingle(body, px, py){
+  const dx = body.x-px, dy = body.y-py;
+  const rr = dx*dx+dy*dy; const r = Math.sqrt(rr)||1;
+  const a = G*body.mass/rr;
+  return [a*dx/r, a*dy/r];
+}
+
+function flashScreen(){
+  const f = document.getElementById('flash');
+  f.style.opacity = '0.9';
+  setTimeout(()=>{ f.style.opacity='0'; }, 90);
+}
+
+function triggerFailure(reason){
+  missionFailed = true;
+  document.getElementById('crashReason').textContent = reason;
+  setTimeout(()=>{ document.getElementById('crashOverlay').style.display='flex'; }, 900);
+}
+function triggerSuccess(reason){
+  missionComplete = true;
+  document.getElementById('successReason').textContent = reason;
+  setTimeout(()=>{ document.getElementById('successOverlay').style.display='flex'; }, 600);
+}
+
+/* ---------------------------------------------------------------------
+   Input handling
+--------------------------------------------------------------------- */
+window.addEventListener('keydown', (e)=>{
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  keys[e.key] = true;
+  if(e.key === ' '){ togglePause(); }
+  if(e.key === 'c' || e.key === 'C'){ cycleCamera(); }
+  if(e.key === '.'){ setWarpIndex(warpIndex+1); }
+  if(e.key === ','){ setWarpIndex(warpIndex-1); }
+  if(e.key === 'x' || e.key === 'X'){ craft.throttle = 0; }
+});
+window.addEventListener('keyup', (e)=>{ keys[e.key] = false; });
+
+canvas.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  camTargetZoom *= (e.deltaY < 0 ? 1.15 : 0.87);
+  camTargetZoom = Math.min(8, Math.max(0.05, camTargetZoom));
+}, {passive:false});
+
+function updateControlsFromKeys(dt){
+  if(!missionStarted || missionComplete || missionFailed || craft.landed) return;
+  const rotSpeed = 2.4; // rad/s
+  if(keys['a']||keys['A']||keys['ArrowLeft']) craft.angle -= rotSpeed*dt;
+  if(keys['d']||keys['D']||keys['ArrowRight']) craft.angle += rotSpeed*dt;
+
+  let want = 0;
+  if(keys['w']||keys['W']||keys['ArrowUp']) want = 1;
+  if(keys['Shift']) want = 1;
+  if(keys['s']||keys['S']||keys['ArrowDown']){
+    // retro: flip thrust direction visually by throttling while nudging angle isn't needed;
+    // we simply apply reverse thrust vector
+    want = 1;
+    craft.retro = true;
+  } else {
+    craft.retro = false;
+  }
+  craft.throttle = want && craft.fuel>0 ? 1 : 0;
+}
+
+/* retro thrust: reinterpret in physics step */
+const origStep = stepPhysics;
+
+/* time warp buttons */
+let warpIndex = 1; // matches index into warps array
+const warps = [0,1,5,20,100];
+function setWarpIndex(i){
+  warpIndex = Math.max(0, Math.min(warps.length-1, i));
+  timeWarp = warps[warpIndex];
+  document.querySelectorAll('.tw-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.w) === timeWarp);
+  });
+  paused = (timeWarp === 0);
+  document.getElementById('btnPause').textContent = paused ? 'Resume' : 'Pause';
+}
+document.querySelectorAll('.tw-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const w = parseInt(b.dataset.w);
+    const idx = warps.indexOf(w);
+    setWarpIndex(idx);
+  });
+});
+
+function togglePause(){
+  paused = !paused;
+  document.getElementById('btnPause').textContent = paused ? 'Resume' : 'Pause';
+  if(paused){ timeWarp = 0; } else if(timeWarp===0){ timeWarp = 1; setWarpIndex(1); }
+}
+document.getElementById('btnPause').addEventListener('click', togglePause);
+document.getElementById('btnReset').addEventListener('click', ()=> location.reload());
+
+function cycleCamera(){
+  const modes = ['chase','system','free'];
+  camMode = modes[(modes.indexOf(camMode)+1) % modes.length];
+  document.getElementById('camMode').textContent = camMode[0].toUpperCase()+camMode.slice(1);
+}
+document.getElementById('btnCam').addEventListener('click', cycleCamera);
+
+/* free camera drag */
+let dragging=false, lastMouse={x:0,y:0};
+canvas.addEventListener('mousedown', (e)=>{
+  if(camMode==='free'){ dragging=true; lastMouse={x:e.clientX,y:e.clientY}; }
+});
+window.addEventListener('mouseup', ()=> dragging=false);
+window.addEventListener('mousemove', (e)=>{
+  if(dragging && camMode==='free'){
+    const dx = (e.clientX-lastMouse.x)/camZoom, dy=(e.clientY-lastMouse.y)/camZoom;
+    camX -= dx; camY -= dy;
+    lastMouse = {x:e.clientX, y:e.clientY};
+  }
+});
+
+/* ---------------------------------------------------------------------
+   Rendering
+--------------------------------------------------------------------- */
+function worldToScreen(x,y){
+  return [ (x-camX)*camZoom + W/2, (y-camY)*camZoom + H/2 ];
+}
+
+function drawStars(dt){
+  ctx.save();
+  for(const s of stars){
+    // parallax based on camera position
+    const px = (s.x - camX*s.speed);
+    const py = (s.y - camY*s.speed);
+    const sx = ((px % (W*4)) + W*4) % (W*4) - W*1.5;
+    const sy = ((py % (H*4)) + H*4) % (H*4) - H*1.5;
+    s.twinkle += dt*(0.5+s.layer*0.4);
+    const tw = 0.65 + Math.sin(s.twinkle)*0.35;
+    ctx.globalAlpha = s.alpha * tw;
+    ctx.fillStyle = '#dff6ff';
+    ctx.beginPath();
+    ctx.arc(sx, sy, s.size, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawBody(b){
+  const [sx,sy] = worldToScreen(b.x,b.y);
+  const r = Math.max(1.4, b.radius*camZoom);
+  if(sx < -r*3 || sx > W+r*3 || sy < -r*3 || sy > H+r*3) return;
+
+  // glow halo
+  const glowR = r*3.4;
+  const grad = ctx.createRadialGradient(sx,sy,r*0.2, sx,sy, glowR);
+  grad.addColorStop(0, b.glow);
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(sx,sy,glowR,0,Math.PI*2); ctx.fill();
+
+  // body sphere shading
+  const bodyGrad = ctx.createRadialGradient(sx-r*0.35,sy-r*0.35,r*0.1, sx,sy,r);
+  bodyGrad.addColorStop(0, b.color[0]);
+  bodyGrad.addColorStop(0.55, b.color[1]);
+  bodyGrad.addColorStop(1, b.color[2]);
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); ctx.fill();
+
+  if(b.isStar){
+    // extra corona flicker
+    ctx.save();
+    ctx.globalAlpha = 0.35 + Math.sin(met*2)*0.05;
+    ctx.strokeStyle = 'rgba(255,220,150,0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(sx,sy,r*1.15,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // label
+  if(camZoom > 0.03){
+    ctx.fillStyle = 'rgba(220,245,255,0.65)';
+    ctx.font = '11px Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(b.name.toUpperCase(), sx, sy + r + 16);
+  }
+}
+
+function drawOrbitPrediction(){
+  // draw a predicted ellipse using current orbital elements around dominant body
+  let dominant = terra;
+  let bestPull = 0;
+  for(const b of bodies){
+    if(b.mass<=0) continue;
+    const d = Math.hypot(craft.x-b.x, craft.y-b.y);
+    const pull = b.mass/(d*d);
+    if(pull > bestPull){ bestPull = pull; dominant = b; }
+  }
+  const {a, ecc} = orbitalElements(craft, dominant);
+  if(!a || !isFinite(a) || ecc>=1) return;
+
+  const dx = craft.x-dominant.x, dy = craft.y-dominant.y;
+  const r = Math.hypot(dx,dy);
+  const dvx = craft.vx-dominant.vx, dvy = craft.vy-dominant.vy;
+  const h = dx*dvy - dy*dvx;
+  const mu = G*dominant.mass;
+  // argument of periapsis via eccentricity vector
+  const rv = r;
+  const ex = (dvy*h)/mu - dx/rv;
+  const ey = (-dvx*h)/mu - dy/rv;
+  const argPe = Math.atan2(ey,ex);
+  const b_ = a*Math.sqrt(Math.max(0,1-ecc*ecc));
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(78,225,255,0.35)';
+  ctx.setLineDash([6,6]);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  const steps=100;
+  for(let i=0;i<=steps;i++){
+    const th = (i/steps)*Math.PI*2;
+    const xr = a*Math.cos(th) - a*ecc;
+    const yr = b_*Math.sin(th);
+    const cx = xr*Math.cos(argPe) - yr*Math.sin(argPe) + dominant.x;
+    const cy = xr*Math.sin(argPe) + yr*Math.cos(argPe) + dominant.y;
+    const [sx,sy] = worldToScreen(cx,cy);
+    if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawTrail(){
+  if(craft.trail.length<2) return;
+  ctx.save();
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  for(let i=1;i<craft.trail.length;i++){
+    const p0 = craft.trail[i-1], p1 = craft.trail[i];
+    const t = i/craft.trail.length;
+    const [x0,y0] = worldToScreen(p0.x,p0.y);
+    const [x1,y1] = worldToScreen(p1.x,p1.y);
+    ctx.strokeStyle = 'rgba(78,225,255,'+(t*0.55)+')';
+    ctx.lineWidth = 1 + t*2;
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawParticles(dt){
+  ctx.save();
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i];
+    p.age += dt;
+    if(p.age>p.life){ particles.splice(i,1); continue; }
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    const [sx,sy] = worldToScreen(p.x,p.y);
+    const t = 1-(p.age/p.life);
+    ctx.globalAlpha = t;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(sx,sy,p.size*Math.max(0.3,t)*camZoom*0.8+0.6,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawCraft(){
+  if(craft.destroyed) return;
+  const [sx,sy] = worldToScreen(craft.x, craft.y);
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.rotate(craft.angle);
+  const s = Math.max(0.6, Math.min(2.2, camZoom*1.4));
+  ctx.scale(s,s);
+
+  // engine glow when thrusting
+  if(craft.throttle>0 && craft.fuel>0){
+    const flicker = 0.7+Math.random()*0.3;
+    const eg = ctx.createRadialGradient(-14,0,0,-14,0,16);
+    eg.addColorStop(0, 'rgba(255,220,150,'+flicker+')');
+    eg.addColorStop(1, 'rgba(255,140,60,0)');
+    ctx.fillStyle = eg;
+    ctx.beginPath(); ctx.arc(-14,0, 14, 0, Math.PI*2); ctx.fill();
+  }
+
+  // hull
+  ctx.fillStyle = '#dfeef5';
+  ctx.beginPath();
+  ctx.moveTo(14,0);
+  ctx.lineTo(-8,6);
+  ctx.lineTo(-5,0);
+  ctx.lineTo(-8,-6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#4ee1ff';
+  ctx.beginPath(); ctx.arc(4,0,2.4,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
+
+  ctx.restore();
+
+  // velocity vector indicator (prograde marker)
+  const spd = Math.hypot(craft.vx,craft.vy);
+  if(spd>1){
+    const vAngle = Math.atan2(craft.vy,craft.vx);
+    const dist = 34;
+    const vx = sx + Math.cos(vAngle)*dist, vy = sy + Math.sin(vAngle)*dist;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(124,255,155,0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(vx,vy,5,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(vx-8,vy); ctx.lineTo(vx+8,vy); ctx.moveTo(vx,vy-8); ctx.lineTo(vx,vy+8); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Camera update
+--------------------------------------------------------------------- */
+function updateCamera(dt){
+  let targetX = camX, targetY = camY, targetZoom = camTargetZoom;
+  if(camMode === 'chase'){
+    targetX = craft.x; targetY = craft.y;
+  } else if(camMode === 'system'){
+    targetX = terra.x*0.4; targetY = terra.y*0.4;
+    if(camTargetZoom === camZoom) targetZoom = 0.14;
+  }
+  const ease = 1 - Math.pow(0.001, dt);
+  if(camMode !== 'free'){
+    camX += (targetX-camX)*ease;
+    camY += (targetY-camY)*ease;
+  }
+  camZoom += (camTargetZoom-camZoom)*ease;
+  document.getElementById('zoomVal').textContent = camZoom.toFixed(2)+'x';
+}
+
+/* ---------------------------------------------------------------------
+   HUD update
+--------------------------------------------------------------------- */
+function updateHUD(){
+  const d = Math.hypot(craft.x-terra.x, craft.y-terra.y);
+  const altKm = Math.max(0,(d-terra.radius))*KM_PER_UNIT;
+  const speed = Math.hypot(craft.vx,craft.vy) * (KM_PER_UNIT*1000)/1000; // m/s-ish scaled
+
+  document.getElementById('alt').textContent = altKm.toFixed(0)+' km';
+  document.getElementById('vel').textContent = (speed).toFixed(0)+' m/s';
+  document.getElementById('heading').textContent = ((craft.angle*180/Math.PI+360)%360).toFixed(0)+'\u00b0';
+  document.getElementById('throttleVal').textContent = Math.round(craft.throttle*100)+'%';
+  document.getElementById('throttleBar').style.width = (craft.throttle*100)+'%';
+  document.getElementById('fuelVal').textContent = craft.fuel.toFixed(0)+'%';
+  document.getElementById('fuelBar').style.width = craft.fuel+'%';
+
+  let dominant = terra, bestPull=0;
+  for(const b of bodies){
+    if(b.mass<=0) continue;
+    const dd = Math.hypot(craft.x-b.x, craft.y-b.y);
+    const pull = b.mass/(dd*dd);
+    if(pull>bestPull){bestPull=pull; dominant=b;}
+  }
+  const {ap,pe,hyperbolic} = orbitalElements(craft, dominant);
+  document.getElementById('apo').textContent = hyperbolic ? 'Escape traj.' : (ap? Math.round((ap-dominant.radius)*KM_PER_UNIT)+' km' : '--');
+  if(pe!=null){
+    const peAlt = (pe-dominant.radius)*KM_PER_UNIT;
+    document.getElementById('peri').textContent = peAlt < 0 ? 'Impact course' : Math.round(peAlt)+' km';
+  } else {
+    document.getElementById('peri').textContent = '--';
+  }
+
+  document.getElementById('metVal').textContent = formatMET(met);
+
+  let status = 'Nominal';
+  if(craft.landed) status = 'Landed';
+  if(missionComplete) status = 'Complete';
+  if(missionFailed) status = 'Lost';
+  const statusEls = document.querySelectorAll('#topbar #missionSub');
+  if(statusEls[1]) statusEls[1].textContent = status;
+}
+
+/* ---------------------------------------------------------------------
+   Main loop
+--------------------------------------------------------------------- */
+let lastT = performance.now();
+let accumulator = 0;
+
+function frame(now){
+  requestAnimationFrame(frame);
+  let dtReal = (now - lastT)/1000;
+  lastT = now;
+  dtReal = Math.min(dtReal, 0.05);
+
+  updateControlsFromKeys(dtReal);
+
+  if(!paused){
+    const simDt = dtReal * timeWarp;
+    // substep for stability at high warp
+    const subSteps = timeWarp > 20 ? 6 : (timeWarp>1? 3:1);
+    const stepDt = simDt/subSteps;
+    for(let i=0;i<subSteps;i++){
+      applyRetroThrustPatch(stepDt);
+      stepPhysics(stepDt);
+    }
+    met += simDt;
+  }
+
+  updateCamera(dtReal);
+
+  // render
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#010208';
+  ctx.fillRect(0,0,W,H);
+  drawStars(dtReal);
+  for(const b of bodies) drawBody(b);
+  drawOrbitPrediction();
+  drawTrail();
+  drawParticles(dtReal);
+  drawCraft();
+  updateHUD();
+}
+
+/* Patch: handle retro-thrust direction (apply reversed vector without changing facing) */
+function applyRetroThrustPatch(dt){
+  if(craft.retro && craft.throttle>0 && craft.fuel>0 && !craft.landed && craft.alive){
+    const a = craft.thrustAccel*craft.throttle;
+    craft.vx -= Math.cos(craft.angle)*a*dt*2;
+    craft.vy -= Math.sin(craft.angle)*a*dt*2;
+    craft.fuel = Math.max(0, craft.fuel - craft.fuelBurnRate*craft.throttle*dt);
+    spawnThrustParticles(dt, true);
+    craft.throttle = 0; // prevent double-thrust in stepPhysics for this substep
+    // restore small throttle indicator for HUD purposes only visually
+    craft._retroActive = true;
+  } else {
+    craft._retroActive = false;
+  }
+}
+
+requestAnimationFrame(frame);
+
+/* ---------------------------------------------------------------------
+   Intro / mission select wiring
+--------------------------------------------------------------------- */
+document.querySelectorAll('.mission-card').forEach(card=>{
+  card.addEventListener('click', ()=>{
+    document.querySelectorAll('.mission-card').forEach(c=>c.classList.remove('active'));
+    card.classList.add('active');
+    missionType = card.dataset.mission;
+  });
+});
+
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  const m = missions[missionType];
+  m.setup();
+  missionStarted = true;
+  document.getElementById('missionTitle').textContent = m.title;
+  document.querySelectorAll('#missionSub')[0].textContent = m.sub;
+  document.getElementById('intro').classList.add('hide');
+  logEvent('Mission started: '+m.title);
+  camX = craft.x; camY = craft.y;
+  camZoom = 1.4; camTargetZoom = 1.4;
+});
+
+// keep throttle var name consistent for HUD when retro active
+Object.defineProperty(craft, 'displayThrottle', { get(){ return craft._retroActive ? 1 : craft.throttle; } });
+
+})();
+</script>
+</body>
+</html>
