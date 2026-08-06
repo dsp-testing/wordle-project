@@ -22,6 +22,9 @@
               ? 'dark'
               : 'light';
           document.documentElement.setAttribute('data-theme', theme);
+
+          var colorblind = window.localStorage.getItem('colorblind') === 'true';
+          document.documentElement.setAttribute('data-colorblind', colorblind);
         } catch (e) {
           /* localStorage unavailable; fall back to CSS media query */
         }

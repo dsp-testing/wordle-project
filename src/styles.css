@@ -58,6 +58,18 @@ html[data-theme='dark'] {
 }
 
 /*
+  Colorblind mode
+  Swaps the green/yellow "correct"/"misplaced" cell colors, which are hard to
+  tell apart for the most common forms of color blindness (deuteranopia and
+  protanopia), for a blue/orange palette that stays distinguishable. Applies
+  on top of either theme.
+*/
+html[data-colorblind='true'] {
+  --color-success: hsl(215deg 90% 45%);
+  --color-warning: hsl(30deg 100% 50%);
+}
+
+/*
   Custom styles
 */
 body {
@@ -101,6 +113,12 @@ header .side {
   width: var(--header-height);
   display: grid;
   place-content: center;
+}
+
+header .header-controls {
+  width: auto;
+  min-width: var(--header-height);
+  padding-right: 8px;
 }
 
 h1 {
@@ -220,6 +238,18 @@ h1 {
 .theme-toggle:hover,
 .theme-toggle:focus-visible {
   background: var(--color-gray-900);
+}
+
+.theme-toggle.active {
+  background: var(--color-gray-900);
+  outline: 2px solid var(--color-gray-500);
+  outline-offset: -2px;
+}
+
+.header-controls {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
 }
 
 .banner {
