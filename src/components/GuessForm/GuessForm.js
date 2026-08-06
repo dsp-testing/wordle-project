@@ -8,7 +8,7 @@ function GuessForm({ addToGuessList, disableForm = false}) {
     event.preventDefault()
 
     if (!guess.match(validateLength)) {
-      return window.alert("Guess must have exactly 5 A-Z characters")
+      return window.alert("Transmission rejected: codeword must have exactly 5 A-Z characters")
     }
 
     console.info({ guess });
@@ -18,7 +18,7 @@ function GuessForm({ addToGuessList, disableForm = false}) {
 
   return (
     <form className="guess-input-wrapper" onSubmit={handleSubmit}>
-      <label htmlFor="guess-input">Enter guess:</label>
+      <label htmlFor="guess-input">Transmit codeword guess:</label>
       <input
         required
         id="guess-input"
