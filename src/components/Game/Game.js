@@ -11,7 +11,7 @@ import ResultsBanner from '../ResultsBanner';
 
 function Game() {
   const [answer, setAnswer] = React.useState(sample(WORDS))
-  const [guessList, setGuessList] = React.useState(range(NUM_OF_GUESSES_ALLOWED).map(() => ""))
+  const [guessList, setGuessList] = React.useState(range(NUM_OF_GUESSES_ALLOWED + 1).map(() => ""))
   const [guessListIndex, setGuessListIndex] = React.useState(0)
   const [isGameWon, setIsGameWon] = React.useState(false)
   const [isGameLost, setIsGameLost] = React.useState(false)
@@ -30,7 +30,7 @@ function Game() {
       setDisableForm(true)
     }
 
-    if (!isGameWon && guessListIndex + 1 === NUM_OF_GUESSES_ALLOWED) {
+    if (!isGameWon && guessListIndex + 1 === NUM_OF_GUESSES_ALLOWED + 1) {
       setIsGameLost(true)
       setDisableForm(true)
     }
@@ -38,7 +38,7 @@ function Game() {
 
   function resetGame() {
     setGuessListIndex(0)
-    setGuessList(range(NUM_OF_GUESSES_ALLOWED).map(() => ""))
+    setGuessList(range(NUM_OF_GUESSES_ALLOWED + 1).map(() => ""))
     setIsGameWon(false)
     setIsGameLost(false)
     setDisableForm(false)
