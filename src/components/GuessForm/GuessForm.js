@@ -1,6 +1,8 @@
 import React from 'react';
 
-function GuessForm({ addToGuessList, disableForm = false}) {
+import { validateHardModeGuess } from '../../game-helpers';
+
+function GuessForm({ addToGuessList, disableForm = false, hardMode = false, guessList = [], answer }) {
   const [guess, setGuess] = React.useState("")
   const validateLength = /([A-Z]){5}/g
 
@@ -9,6 +11,13 @@ function GuessForm({ addToGuessList, disableForm = false}) {
 
     if (!guess.match(validateLength)) {
       return window.alert("Guess must have exactly 5 A-Z characters")
+    }
+
+    if (hardMode && answer) {
+      const hardModeError = validateHardModeGuess(guess, guessList, answer)
+      if (hardModeError) {
+        return window.alert(hardModeError)
+      }
     }
 
     console.info({ guess });
