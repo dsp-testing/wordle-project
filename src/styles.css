@@ -83,6 +83,33 @@ h1 {
   max-width: min(500px, 58vh, 100%);
 }
 
+.colour-picker {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.colour-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.colour-swatch:hover {
+  border-color: var(--color-gray-500);
+}
+
+.colour-swatch[aria-pressed="true"] {
+  border-color: var(--color-gray-100);
+  box-shadow: 0 0 0 2px white, 0 0 0 3px var(--color-gray-100);
+}
+
 .guess-results {
   flex: 1;
   display: flex;
