@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Mandelbrot Set Renderer</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0b0b0f;
+    color: #eee;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    overflow: hidden;
+    height: 100%;
+  }
+  #container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas.dragging {
+    cursor: grabbing;
+  }
+  #panel {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(20, 20, 28, 0.85);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 260px;
+    backdrop-filter: blur(4px);
+  }
+  #panel h1 {
+    font-size: 15px;
+    margin: 0 0 8px 0;
+  }
+  #panel button, #panel select {
+    background: #2a2a38;
+    color: #eee;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 6px;
+    margin-right: 4px;
+  }
+  #panel button:hover, #panel select:hover {
+    background: #383848;
+  }
+  #info {
+    margin-top: 8px;
+    opacity: 0.75;
+    font-size: 11px;
+    word-break: break-all;
+  }
+  #loading {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(20, 20, 28, 0.85);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div id="container">
+  <canvas id="canvas"></canvas>
+  <div id="panel">
+    <h1>Mandelbrot Set</h1>
+    <div>Scroll to zoom, drag to pan.</div>
+    <div>
+      Palette:
+      <select id="palette">
+        <option value="classic">Classic</option>
+        <option value="fire">Fire</option>
+        <option value="ocean">Ocean</option>
+        <option value="grayscale">Grayscale</option>
+      </select>
+    </div>
+    <div>
+      <button id="reset">Reset View</button>
+      <button id="more">More Iterations</button>
+    </div>
+    <div id="info"></div>
+  </div>
+  <div id="loading">Rendering...</div>
+</div>
+
+<script>
+(function () {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const infoEl = document.getElementById('info');
+  const loadingEl = document.getElementById('loading');
+  const paletteSelect = document.getElementById('palette');
+  const resetBtn = document.getElementById('reset');
+  const moreBtn = document.getElementById('more');
+
+  const DEFAULT_VIEW = { centerX: -0.5, centerY: 0, scale: 3 };
+  let view = { ...DEFAULT_VIEW };
+  let maxIterations = 200;
+  let dpr = Math.max(1, window.devicePixelRatio || 1);
+  let paletteName = 'classic';
+
+  let dragging = false;
+  let dragStart = null;
+  let viewStart = null;
+  let renderToken = 0;
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+  }
+
+  function paletteColor(name, t, iter, maxIter) {
+    // t in [0,1); iter === maxIter means "in the set" -> black
+    if (iter >= maxIter) return [0, 0, 0];
+    switch (name) {
+      case 'fire': {
+        const r = Math.min(255, Math.floor(255 * Math.pow(t, 0.5)));
+        const g = Math.min(255, Math.floor(180 * Math.pow(t, 1.5)));
+        const b = Math.min(255, Math.floor(60 * Math.pow(t, 3)));
+        return [r, g, b];
+      }
+      case 'ocean': {
+        const r = Math.floor(20 * t);
+        const g = Math.floor(120 + 100 * t);
+        const b = Math.floor(150 + 100 * t);
+        return [r, Math.min(255, g), Math.min(255, b)];
+      }
+      case 'grayscale': {
+        const v = Math.floor(255 * t);
+        return [v, v, v];
+      }
+      case 'classic':
+      default: {
+        // smooth HSV-based rainbow
+        const hue = 360 * t;
+        return hsvToRgb(hue, 0.8, 1.0);
+      }
+    }
+  }
+
+  function hsvToRgb(h, s, v) {
+    const c = v * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = v - c;
+    let r1, g1, b1;
+    if (h < 60) [r1, g1, b1] = [c, x, 0];
+    else if (h < 120) [r1, g1, b1] = [x, c, 0];
+    else if (h < 180) [r1, g1, b1] = [0, c, x];
+    else if (h < 240) [r1, g1, b1] = [0, x, c];
+    else if (h < 300) [r1, g1, b1] = [x, 0, c];
+    else [r1, g1, b1] = [c, 0, x];
+    return [
+      Math.round((r1 + m) * 255),
+      Math.round((g1 + m) * 255),
+      Math.round((b1 + m) * 255),
+    ];
+  }
+
+  function render() {
+    const myToken = ++renderToken;
+    resizeCanvas();
+    const width = canvas.width;
+    const height = canvas.height;
+    if (width === 0 || height === 0) return;
+
+    loadingEl.style.display = 'block';
+
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+
+    const aspect = width / height;
+    const scaleX = view.scale * aspect;
+    const scaleY = view.scale;
+    const xMin = view.centerX - scaleX / 2;
+    const yMin = view.centerY - scaleY / 2;
+
+    // Render in chunks (rows) to keep UI responsive on large images.
+    let row = 0;
+    const rowsPerChunk = 24;
+
+    function processChunk() {
+      if (myToken !== renderToken) return; // superseded by a newer render
+
+      const endRow = Math.min(row + rowsPerChunk, height);
+      for (let py = row; py < endRow; py++) {
+        const y0 = yMin + (py / height) * scaleY;
+        for (let px = 0; px < width; px++) {
+          const x0 = xMin + (px / width) * scaleX;
+
+          let x = 0, y = 0;
+          let x2 = 0, y2 = 0;
+          let iter = 0;
+
+          // cardioid / bulb check for quick interior detection
+          const q = (x0 - 0.25) * (x0 - 0.25) + y0 * y0;
+          const inCardioid = q * (q + (x0 - 0.25)) <= 0.25 * y0 * y0;
+          const inBulb = (x0 + 1) * (x0 + 1) + y0 * y0 <= 0.0625;
+
+          if (inCardioid || inBulb) {
+            iter = maxIterations;
+          } else {
+            while (x2 + y2 <= 4 && iter < maxIterations) {
+              y = 2 * x * y + y0;
+              x = x2 - y2 + x0;
+              x2 = x * x;
+              y2 = y * y;
+              iter++;
+            }
+          }
+
+          const idx = (py * width + px) * 4;
+          let color;
+          if (iter >= maxIterations) {
+            color = [0, 0, 0];
+          } else {
+            // smooth coloring
+            const log_zn = Math.log(x2 + y2) / 2;
+            const nu = Math.log(log_zn / Math.LN2) / Math.LN2;
+            const smoothIter = iter + 1 - nu;
+            const t = (smoothIter % 64) / 64;
+            color = paletteColor(paletteName, t, iter, maxIterations);
+          }
+          data[idx] = color[0];
+          data[idx + 1] = color[1];
+          data[idx + 2] = color[2];
+          data[idx + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      row = endRow;
+
+      if (row < height) {
+        setTimeout(processChunk, 0);
+      } else {
+        loadingEl.style.display = 'none';
+        updateInfo();
+      }
+    }
+
+    processChunk();
+  }
+
+  function updateInfo() {
+    infoEl.textContent =
+      `center: (${view.centerX.toFixed(6)}, ${view.centerY.toFixed(6)})  ` +
+      `zoom: ${(DEFAULT_VIEW.scale / view.scale).toFixed(1)}x  ` +
+      `iterations: ${maxIterations}`;
+  }
+
+  function screenToComplex(px, py) {
+    const rect = canvas.getBoundingClientRect();
+    const width = canvas.width;
+    const height = canvas.height;
+    const aspect = width / height;
+    const scaleX = view.scale * aspect;
+    const scaleY = view.scale;
+    const xMin = view.centerX - scaleX / 2;
+    const yMin = view.centerY - scaleY / 2;
+    const cx = xMin + ((px - rect.left) * dpr / width) * scaleX;
+    const cy = yMin + ((py - rect.top) * dpr / height) * scaleY;
+    return [cx, cy];
+  }
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const [cx, cy] = screenToComplex(e.clientX, e.clientY);
+    const zoomFactor = e.deltaY < 0 ? 0.85 : 1 / 0.85;
+    // zoom toward cursor position
+    view.centerX = cx + (view.centerX - cx) * zoomFactor;
+    view.centerY = cy + (view.centerY - cy) * zoomFactor;
+    view.scale *= zoomFactor;
+    render();
+  }, { passive: false });
+
+  canvas.addEventListener('mousedown', (e) => {
+    dragging = true;
+    canvas.classList.add('dragging');
+    dragStart = { x: e.clientX, y: e.clientY };
+    viewStart = { ...view };
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = canvas.getBoundingClientRect();
+    const aspect = canvas.width / canvas.height;
+    const scaleX = view.scale * aspect;
+    const dxPixels = e.clientX - dragStart.x;
+    const dyPixels = e.clientY - dragStart.y;
+    const dx = (dxPixels / rect.width) * scaleX;
+    const dy = (dyPixels / rect.height) * view.scale;
+    view.centerX = viewStart.centerX - dx;
+    view.centerY = viewStart.centerY - dy;
+    render();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (dragging) {
+      dragging = false;
+      canvas.classList.remove('dragging');
+    }
+  });
+
+  // Touch support (basic pan + pinch zoom)
+  let lastTouchDist = null;
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      dragging = true;
+      dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      viewStart = { ...view };
+    } else if (e.touches.length === 2) {
+      dragging = false;
+      lastTouchDist = touchDistance(e.touches);
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1 && dragging) {
+      const rect = canvas.getBoundingClientRect();
+      const aspect = canvas.width / canvas.height;
+      const scaleX = view.scale * aspect;
+      const dxPixels = e.touches[0].clientX - dragStart.x;
+      const dyPixels = e.touches[0].clientY - dragStart.y;
+      const dx = (dxPixels / rect.width) * scaleX;
+      const dy = (dyPixels / rect.height) * view.scale;
+      view.centerX = viewStart.centerX - dx;
+      view.centerY = viewStart.centerY - dy;
+      render();
+    } else if (e.touches.length === 2) {
+      const dist = touchDistance(e.touches);
+      if (lastTouchDist) {
+        const zoomFactor = lastTouchDist / dist;
+        view.scale *= zoomFactor;
+        render();
+      }
+      lastTouchDist = dist;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => {
+    dragging = false;
+    lastTouchDist = null;
+  });
+
+  function touchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  resetBtn.addEventListener('click', () => {
+    view = { ...DEFAULT_VIEW };
+    maxIterations = 200;
+    render();
+  });
+
+  moreBtn.addEventListener('click', () => {
+    maxIterations = Math.min(2000, Math.floor(maxIterations * 1.5));
+    render();
+  });
+
+  paletteSelect.addEventListener('change', (e) => {
+    paletteName = e.target.value;
+    render();
+  });
+
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(render, 150);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
