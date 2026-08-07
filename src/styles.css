@@ -32,6 +32,20 @@ html[data-theme='purple'] {
 }
 
 /*
+  Beige color palette (alternate theme)
+*/
+html[data-theme='beige'] {
+  --color-success: hsl(90deg 35% 40%);
+  --color-warning: hsl(35deg 60% 45%);
+  --color-error: hsl(10deg 55% 45%);
+  --color-gray-100: hsl(35deg 25% 12%);
+  --color-gray-300: hsl(35deg 20% 30%);
+  --color-gray-500: hsl(35deg 25% 55%);
+  --color-gray-700: hsl(35deg 30% 78%);
+  --color-gray-900: hsl(38deg 40% 93%);
+}
+
+/*
   Custom styles
 */
 body {

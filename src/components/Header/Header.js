@@ -10,6 +10,24 @@ function getInitialTheme() {
   return window.localStorage.getItem(THEME_STORAGE_KEY) || 'default';
 }
 
+const THEMES = ['default', 'purple', 'beige'];
+const THEME_ICONS = {
+  default: '🎨',
+  purple: '🟣',
+  beige: '🟤',
+};
+const THEME_LABELS = {
+  default: 'default',
+  purple: 'purple',
+  beige: 'beige',
+};
+
+function getNextTheme(currentTheme) {
+  const currentIndex = THEMES.indexOf(currentTheme);
+  const nextIndex = (currentIndex + 1) % THEMES.length;
+  return THEMES[nextIndex];
+}
+
 function Header() {
   const [theme, setTheme] = React.useState(getInitialTheme);
 
@@ -19,10 +37,10 @@ function Header() {
   }, [theme]);
 
   function handleToggleTheme() {
-    setTheme((currentTheme) =>
-      currentTheme === 'purple' ? 'default' : 'purple'
-    );
+    setTheme((currentTheme) => getNextTheme(currentTheme));
   }
+
+  const nextThemeLabel = THEME_LABELS[getNextTheme(theme)];
 
   return (
     <header>
@@ -30,18 +48,10 @@ function Header() {
         <button
           className="theme-toggle-btn"
           onClick={handleToggleTheme}
-          aria-label={
-            theme === 'purple'
-              ? 'Switch to default color theme'
-              : 'Switch to purple color theme'
-          }
-          title={
-            theme === 'purple'
-              ? 'Switch to default color theme'
-              : 'Switch to purple color theme'
-          }
+          aria-label={`Switch to ${nextThemeLabel} color theme`}
+          title={`Switch to ${nextThemeLabel} color theme`}
         >
-          {theme === 'purple' ? '🟣' : '🎨'}
+          {THEME_ICONS[theme]}
         </button>
       </div>
       <h1>Word Game</h1>
