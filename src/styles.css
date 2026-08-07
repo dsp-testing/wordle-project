@@ -18,6 +18,25 @@ html {
 }
 
 /*
+  "Yellow" colour palette - a warm, yellow-hued alternative theme.
+  Activated by setting data-theme="yellow" on the <html> element.
+*/
+html[data-theme='yellow'] {
+  --color-success: hsl(80deg 65% 32%);
+  --color-warning: hsl(45deg 100% 40%);
+  --color-error: hsl(25deg 85% 45%);
+  --color-gray-100: hsl(48deg 40% 10%);
+  --color-gray-300: hsl(48deg 35% 25%);
+  --color-gray-500: hsl(48deg 30% 50%);
+  --color-gray-700: hsl(48deg 60% 75%);
+  --color-gray-900: hsl(50deg 80% 92%);
+}
+
+html[data-theme='yellow'] body {
+  background: hsl(50deg 80% 96%);
+}
+
+/*
   Custom styles
 */
 body {
