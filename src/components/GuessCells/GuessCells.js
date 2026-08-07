@@ -13,10 +13,22 @@ function GuessCells({guess, answer}) {
     return `cell ${results[index].status}`
   }
 
+  function statusLabel(index) {
+    if (!results) {
+      return undefined;
+    }
+
+    return results[index].status;
+  }
+
   return (
     <p className="guess">
       {range(5).map((index) => (
-        <span key={index} className={className(index)}>
+        <span
+          key={index}
+          className={className(index)}
+          aria-label={statusLabel(index)}
+        >
           { guess ? guess[index] : undefined}
         </span>
       ))}
