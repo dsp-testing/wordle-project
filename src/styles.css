@@ -197,6 +197,130 @@ h1 {
 }
 
 /*
+  Game switcher (Wordle vs Hangman)
+*/
+.game-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.game-btn {
+  padding: 8px 20px;
+  border: 2px solid var(--color-gray-500);
+  border-radius: 999px;
+  font-size: 1rem;
+}
+
+.game-btn.active {
+  background: var(--color-gray-300);
+  border-color: var(--color-gray-300);
+  color: white;
+}
+
+/*
+  Wordle mode switcher (Daily/Practice + Hard Mode)
+*/
+.mode-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.mode-switcher-types {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-btn {
+  padding: 6px 16px;
+  border: 2px solid var(--color-gray-500);
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.mode-btn.active {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: white;
+}
+
+.hard-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/*
+  Hangman game
+*/
+.hangman {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+  justify-content: center;
+}
+
+.hangman-remaining {
+  font-size: 1rem;
+}
+
+.hangman-word {
+  display: flex;
+  gap: 8px;
+  font-size: 2rem;
+  letter-spacing: 2px;
+}
+
+.hangman-letter {
+  min-width: 1.2ch;
+  text-align: center;
+  border-bottom: 2px solid var(--color-gray-500);
+}
+
+.hangman-keyboard {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.hangman-key {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-content: center;
+  border: 2px solid var(--color-gray-500);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.hangman-key:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.hangman-key.correct {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: white;
+}
+
+.hangman-key.incorrect {
+  background: var(--color-gray-300);
+  border-color: var(--color-gray-300);
+  color: white;
+}
+
+
+/*
   Modal styles
 
   HACK: I'm doing this in a quick and dirty way.
