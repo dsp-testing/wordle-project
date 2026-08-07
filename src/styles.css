@@ -18,6 +18,44 @@ html {
 }
 
 /*
+  "Yellow" colour palette - a warm, yellow-hued alternative theme.
+  Activated by setting data-theme="yellow" on the <html> element.
+*/
+html[data-theme='yellow'] {
+  --color-success: hsl(80deg 65% 32%);
+  --color-warning: hsl(45deg 100% 40%);
+  --color-error: hsl(25deg 85% 45%);
+  --color-gray-100: hsl(48deg 40% 10%);
+  --color-gray-300: hsl(48deg 35% 25%);
+  --color-gray-500: hsl(48deg 30% 50%);
+  --color-gray-700: hsl(48deg 60% 75%);
+  --color-gray-900: hsl(50deg 80% 92%);
+}
+
+html[data-theme='yellow'] body {
+  background: hsl(50deg 80% 96%);
+}
+
+/*
+  "Red" colour palette - a bold, red-hued alternative theme.
+  Activated by setting data-theme="red" on the <html> element.
+*/
+html[data-theme='red'] {
+  --color-success: hsl(150deg 60% 30%);
+  --color-warning: hsl(35deg 90% 45%);
+  --color-error: hsl(355deg 75% 40%);
+  --color-gray-100: hsl(0deg 20% 8%);
+  --color-gray-300: hsl(0deg 20% 22%);
+  --color-gray-500: hsl(0deg 15% 48%);
+  --color-gray-700: hsl(0deg 25% 78%);
+  --color-gray-900: hsl(0deg 40% 94%);
+}
+
+html[data-theme='red'] body {
+  background: hsl(0deg 45% 97%);
+}
+
+/*
   Custom styles
 */
 body {
