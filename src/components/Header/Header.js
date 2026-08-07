@@ -1,5 +1,11 @@
 import React from 'react';
-import { THEMES, getStoredTheme, applyTheme } from '../../theme';
+import { THEMES, getStoredTheme, applyTheme, getNextTheme } from '../../theme';
+
+const THEME_LABELS = {
+  [THEMES.DEFAULT]: 'default',
+  [THEMES.YELLOW]: 'yellow',
+  [THEMES.RED]: 'red',
+};
 
 function Header() {
   const [theme, setTheme] = React.useState(getStoredTheme);
@@ -9,10 +15,10 @@ function Header() {
   }, [theme]);
 
   function toggleTheme() {
-    setTheme((current) =>
-      current === THEMES.YELLOW ? THEMES.DEFAULT : THEMES.YELLOW
-    );
+    setTheme((current) => getNextTheme(current));
   }
+
+  const nextThemeLabel = THEME_LABELS[getNextTheme(theme)];
 
   return (
     <header>
@@ -22,16 +28,8 @@ function Header() {
         <button
           type="button"
           onClick={toggleTheme}
-          aria-label={
-            theme === THEMES.YELLOW
-              ? 'Switch to default colour palette'
-              : 'Switch to yellow colour palette'
-          }
-          title={
-            theme === THEMES.YELLOW
-              ? 'Switch to default colour palette'
-              : 'Switch to yellow colour palette'
-          }
+          aria-label={`Switch to ${nextThemeLabel} colour palette`}
+          title={`Switch to ${nextThemeLabel} colour palette`}
         >
           🎨
         </button>
