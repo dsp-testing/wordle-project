@@ -18,6 +18,21 @@ html {
 }
 
 /*
+  Colorblind-friendly palette.
+
+  Green/yellow is the hardest combination for deuteranopia and
+  protanopia (red-green colorblindness), the most common forms.
+  We swap to a blue/orange scheme instead, which stays distinguishable
+  across all common types of color vision deficiency (including
+  tritanopia). Tile shapes/symbols are also added below so state never
+  depends on color perception alone.
+*/
+.colorblind-mode {
+  --color-success: hsl(215deg 90% 45%);
+  --color-warning: hsl(30deg 100% 45%);
+}
+
+/*
   Custom styles
 */
 body {
@@ -66,9 +81,27 @@ h1 {
   text-align: center;
 }
 
+.colorblind-toggle {
+  align-self: center;
+  margin-right: 16px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-gray-500);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.colorblind-toggle[aria-pressed="true"] {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
 @media (max-width: 25rem) {
   h1 {
     font-size: 1.25rem;
+  }
+  .colorblind-toggle {
+    font-size: 0.7rem;
+    padding: 4px 8px;
   }
 }
 
@@ -138,6 +171,30 @@ h1 {
   background: var(--color-warning);
   border-color: var(--color-warning);
   color: white;
+}
+
+/*
+  Shape/symbol cues so tile state doesn't depend on color alone.
+  Only shown in colorblind mode to avoid cluttering the default look.
+*/
+.colorblind-mode .cell.correct::after,
+.colorblind-mode .cell.misplaced::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+}
+.colorblind-mode .cell.correct::after {
+  /* Filled circle for correct */
+  border-radius: 50%;
+  background: white;
+}
+.colorblind-mode .cell.misplaced::after {
+  /* Diamond for misplaced */
+  background: white;
+  transform: rotate(45deg);
 }
 
 .guess-input-wrapper {
