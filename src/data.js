@@ -50,3 +50,27 @@ export const WORDS = [
   'FLAKE',
   'SOUND',
 ];
+
+// Common Japanese words, each made up of exactly 5 hiragana characters.
+export const JAPANESE_WORDS = [
+  'ありがとう', // thank you
+  'こんにちは', // hello
+  'さようなら', // goodbye
+  'さくらんぼ', // cherry
+  'たまごやき', // rolled omelette
+  'おかあさん', // mother
+  'おとうさん', // father
+  'おともだち', // friend
+  'かたつむり', // snail
+  'すずめばち', // hornet
+  'めだまやき', // fried egg
+  'やおやさん', // greengrocer
+  'くだものや', // fruit shop
+  'やまのぼり', // mountain climbing
+  'しんぶんし', // newspaper
+];
+
+export const WORD_LISTS = {
+  english: WORDS,
+  japanese: JAPANESE_WORDS,
+};
