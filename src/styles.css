@@ -48,6 +48,7 @@ button {
 
 header {
   display: flex;
+  align-items: center;
   height: var(--header-height);
   border-bottom: 1px solid var(--color-gray-700);
   color: var(--color-gray-300);
@@ -57,6 +58,24 @@ header .side {
   width: var(--header-height);
   display: grid;
   place-content: center;
+}
+
+.language-switcher {
+  display: flex;
+  gap: 8px;
+  padding-right: 16px;
+}
+
+.language-switcher button {
+  padding: 4px 10px;
+  border: 1px solid var(--color-gray-700);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.language-switcher button.active {
+  background: var(--color-gray-700);
+  color: var(--color-gray-100);
 }
 
 h1 {

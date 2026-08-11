@@ -1,14 +1,16 @@
 import React from 'react';
 
-function GuessForm({ addToGuessList, disableForm = false}) {
+import { LANGUAGES, LANGUAGE_CONFIG } from '../../constants';
+
+function GuessForm({ addToGuessList, disableForm = false, language = LANGUAGES.ENGLISH }) {
   const [guess, setGuess] = React.useState("")
-  const validateLength = /([A-Z]){5}/g
+  const { validationPattern, validationMessage, guessLabel } = LANGUAGE_CONFIG[language]
 
   function handleSubmit(event) {
     event.preventDefault()
 
-    if (!guess.match(validateLength)) {
-      return window.alert("Guess must have exactly 5 A-Z characters")
+    if (!validationPattern.test(guess)) {
+      return window.alert(validationMessage)
     }
 
     console.info({ guess });
@@ -16,15 +18,21 @@ function GuessForm({ addToGuessList, disableForm = false}) {
     setGuess("")
   }
 
+  function handleChange(event) {
+    const value = event.target.value
+    // English guesses are compared in uppercase; Japanese hiragana has no case.
+    setGuess(language === LANGUAGES.ENGLISH ? value.toUpperCase() : value)
+  }
+
   return (
     <form className="guess-input-wrapper" onSubmit={handleSubmit}>
-      <label htmlFor="guess-input">Enter guess:</label>
+      <label htmlFor="guess-input">{guessLabel}</label>
       <input
         required
         id="guess-input"
         type="text"
         value={guess}
-        onChange={event => setGuess(event.target.value.toUpperCase())}
+        onChange={handleChange}
         maxLength={5}
         minLength={5}
         disabled={disableForm}
